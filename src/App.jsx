@@ -1,9 +1,11 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import Diagram from "./components/Diagram";
 import ModelEditorModal from "./components/ModelEditorModal";
 import { getLayoutedElements } from "./utils/getLayoutedElements";
 import { MarkerType, ReactFlowProvider } from "@xyflow/react";
+
+const STORAGE_KEY = "db-visualizer-models";
 
 const initialModels = [
   {
@@ -31,10 +33,30 @@ const initialModels = [
   },
 ];
 
+// Load from localStorage or fall back to initialModels
+const loadModels = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.warn("Failed to load models from localStorage:", e);
+  }
+  return initialModels;
+};
+
 const App = () => {
-  const [models, setModels] = useState(initialModels);
+  const [models, setModels] = useState(loadModels);
   const [showModal, setShowModal] = useState(false);
   const [editingModelId, setEditingModelId] = useState(null);
+
+  // Persist models to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(models));
+    } catch (e) {
+      console.warn("Failed to save models to localStorage:", e);
+    }
+  }, [models]);
 
   const currentEditingModel = editingModelId ? models.find((m) => m.id === editingModelId) : null;
 
@@ -98,18 +120,18 @@ const App = () => {
     return list;
   }, [models]);
 
- const onNodesChange = useCallback((changes) => {
-  const positionChanges = changes.filter(
-    (c) => c.type === "position" && c.position && !c.dragging
-  );
-  if (positionChanges.length === 0) return; // 🔑 bail out if nothing to update
-  setModels((prev) =>
-    prev.map((model) => {
-      const change = positionChanges.find((c) => c.id === model.id);
-      return change ? { ...model, position: change.position } : model;
-    })
-  );
-}, []);
+  const onNodesChange = useCallback((changes) => {
+    const positionChanges = changes.filter(
+      (c) => c.type === "position" && c.position && !c.dragging
+    );
+    if (positionChanges.length === 0) return;
+    setModels((prev) =>
+      prev.map((model) => {
+        const change = positionChanges.find((c) => c.id === model.id);
+        return change ? { ...model, position: change.position } : model;
+      })
+    );
+  }, []);
 
   const handleLayout = useCallback(() => {
     const { nodes: layouted } = getLayoutedElements(nodes, edges);
@@ -151,25 +173,25 @@ const App = () => {
 
   return (
     <ReactFlowProvider>
-    <div className="flex h-screen overflow-hidden bg-gray-100">
-      <Sidebar
-        models={models}
-        onAddModel={handleAddModel}
-        onEditModel={handleEditModel}
-        onDeleteModel={handleDeleteModel}
-      />
-      <Diagram nodes={nodes} edges={edges} onNodesChange={onNodesChange} onLayout={handleLayout} />
-      <ModelEditorModal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setEditingModelId(null);
-        }}
-        onSave={handleSaveModel}
-        models={models}
-        currentModel={currentEditingModel}
-      />
-    </div>
+      <div className="flex h-screen overflow-hidden bg-gray-100">
+        <Sidebar
+          models={models}
+          onAddModel={handleAddModel}
+          onEditModel={handleEditModel}
+          onDeleteModel={handleDeleteModel}
+        />
+        <Diagram nodes={nodes} edges={edges} onNodesChange={onNodesChange} onLayout={handleLayout} />
+        <ModelEditorModal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setEditingModelId(null);
+          }}
+          onSave={handleSaveModel}
+          models={models}
+          currentModel={currentEditingModel}
+        />
+      </div>
     </ReactFlowProvider>
   );
 };

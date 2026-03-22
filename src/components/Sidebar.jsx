@@ -20,7 +20,7 @@ const Sidebar = ({ models, onAddModel, onEditModel, onDeleteModel }) => {
       >
         {/* Header */}
         <div className="p-6 border-b">
-          <h1 className="text-3xl font-bold text-blue-600 tracking-tight">DB Visualizer</h1>
+          <h1 className="text-3xl font-bold text-blue-600 tracking-tight">DB </h1>
           <p className="text-gray-500 text-sm mt-1">Dynamic ER / UML Tool</p>
         </div>
 
